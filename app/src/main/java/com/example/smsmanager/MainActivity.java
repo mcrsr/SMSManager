@@ -1,5 +1,7 @@
 package com.example.smsmanager;
 
+import static android.provider.CallLog.Calls.LIMIT_PARAM_KEY;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
@@ -8,6 +10,7 @@ import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
+import android.provider.CallLog;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.util.Log;
@@ -248,5 +251,33 @@ public class MainActivity extends AppCompatActivity {
         if(cur!=null){
             cur.close();
         }
+    }
+
+    @SuppressLint("Range")
+    public void getCallLogs(View view) {
+        String msgData=null;
+        Cursor callLogs = getContentResolver().query(CallLog.Calls.CONTENT_URI, null, null, null, null);
+        while (callLogs.moveToNext()){
+            String number = callLogs.getString(callLogs.getColumnIndex(CallLog.Calls.NUMBER));
+            String type = callLogs.getString(callLogs.getColumnIndex(CallLog.Calls.TYPE));
+            String date = callLogs.getString(callLogs.getColumnIndex(CallLog.Calls.DATE));
+            Date date1 = new Date(Long.valueOf(date));
+            String duration = callLogs.getString(callLogs.getColumnIndex(CallLog.Calls.DURATION));
+            String callType=null;
+            switch (Integer.parseInt(type)){
+                case CallLog.Calls.OUTGOING_TYPE:
+                    callType = "OUTGOING";
+                    break;
+                case CallLog.Calls.INCOMING_TYPE:
+                    callType = "INCOMING";
+                    break;
+                case CallLog.Calls.MISSED_TYPE:
+                    callType = "MISSED";
+                    break;
+            }
+            msgData += number+" "+callType+" "+date1+" "+duration+"\n";
+            ((TextView)findViewById(R.id.displayData)).setText(msgData);
+        }
+        callLogs.close();
     }
 }

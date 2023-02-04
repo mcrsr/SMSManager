@@ -49,7 +49,15 @@
             android:layout_below="@+id/sendEmail"
             android:layout_centerHorizontal="true"
             />
-
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="get CallLogs"
+            android:id="@+id/getCallLogs"
+            android:onClick="getCallLogs"
+            android:layout_below="@+id/getContacts"
+            android:layout_centerHorizontal="true"
+            />
     </RelativeLayout>
 
     <ScrollView
