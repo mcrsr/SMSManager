@@ -43,9 +43,9 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="download as Excel"
-            android:id="@+id/downloadAsExcel"
-            android:onClick="downloadAsExcel"
+            android:text="get Contacts"
+            android:id="@+id/getContacts"
+            android:onClick="getContacts"
             android:layout_below="@+id/sendEmail"
             android:layout_centerHorizontal="true"
             />

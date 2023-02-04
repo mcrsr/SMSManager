@@ -2,12 +2,12 @@ package com.example.smsmanager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.ContentResolver;
-import android.content.Intent;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.util.Log;
@@ -15,22 +15,29 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.apache.commons.io.filefilter.DirectoryFileFilter;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
 
     DateFormat obj = new SimpleDateFormat("dd MMM yyyy HH:mm:ss:SSS Z");
     Date res;
+    String msgData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,26 +47,12 @@ public class MainActivity extends AppCompatActivity {
 
     public void getData(View view) {
         ContentResolver cr = getContentResolver();
-        String msgData = "";
+        msgData = "";
         Cursor c = cr.query(Telephony.Sms.Inbox.CONTENT_URI,
                 new String[] { Telephony.Sms.Inbox.BODY,
                         Telephony.Sms.Inbox.ADDRESS,
-                        Telephony.Sms.Inbox.CREATOR,
                         Telephony.Sms.Inbox.DATE,
-                        Telephony.Sms.Inbox.DATE_SENT,
-                        Telephony.Sms.Inbox.PERSON,
-                        Telephony.Sms.Inbox.ERROR_CODE,
-                        Telephony.Sms.Inbox.LOCKED,
-                        Telephony.Sms.Inbox.PROTOCOL,
-                        Telephony.Sms.Inbox.READ,
-                        Telephony.Sms.Inbox.REPLY_PATH_PRESENT,
-                        Telephony.Sms.Inbox.SEEN,
-                        Telephony.Sms.Inbox.SERVICE_CENTER,
-                        Telephony.Sms.Inbox.STATUS,
-                        Telephony.Sms.Inbox.SUBJECT,
-                        Telephony.Sms.Inbox.SUBSCRIPTION_ID,
-                        Telephony.Sms.Inbox.THREAD_ID,
-                        Telephony.Sms.Inbox.TYPE}, // Select body text
+                        Telephony.Sms.Inbox.DATE_SENT,}, // Select body text
                 null, null, Telephony.Sms.Inbox.DEFAULT_SORT_ORDER);
         int totalSMS = c.getCount();
 
@@ -69,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                 msgData += "*********************************************************\n";
                 for(int idx=0;idx<c.getColumnCount();idx++)
                 {
-                    if (idx == 3 || idx == 4){
+                    if (idx == 2 || idx == 3){
                         res = new Date(Long.valueOf(c.getString(idx)));
                         msgData += " " + c.getColumnName(idx) + ":" + obj.format(res)+"\n";
                         continue;
@@ -88,50 +81,76 @@ public class MainActivity extends AppCompatActivity {
         ((TextView)findViewById(R.id.displayData)).setText(msgData);
     }
 
-    public void sendEmail(View view) {
-        Log.i("Send email", "");
-        String[] TO = {"mcrsr0208@gmail.com"};
-        String[] CC = {"mcrsr0209@gmail.com"};
-        Intent emailIntent = new Intent(Intent.ACTION_SEND);
+    public void sendEmail(View view){
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
 
-        emailIntent.setData(Uri.parse("mailto:"));
-        emailIntent.setType("text/plain");
-        emailIntent.putExtra(Intent.EXTRA_EMAIL, TO);
-        emailIntent.putExtra(Intent.EXTRA_CC, CC);
-        emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Messages Backup");
-        emailIntent.putExtra(Intent.EXTRA_TEXT, ((TextView)findViewById(R.id.displayData)).getText().toString());
+        // Recipient's email ID needs to be mentioned.
+        String to = "mcrsr0208@gmail.com";
+
+        // Sender's email ID needs to be mentioned
+        String from = "mcrsr0209@gmail.com";
+
+        // Assuming you are sending email from through gmails smtp
+        String host = "smtp.gmail.com";
+
+        // Get system properties
+        Properties properties = System.getProperties();
+
+        // Setup mail server
+        properties.put("mail.smtp.host", host);
+        properties.put("mail.smtp.port", "465");
+        properties.put("mail.smtp.ssl.enable", "true");
+        properties.put("mail.smtp.auth", "true");
+
+        // Get the Session object.// and pass username and password
+        Session session = Session.getInstance(properties, new javax.mail.Authenticator() {
+
+            protected PasswordAuthentication getPasswordAuthentication() {
+
+                return new PasswordAuthentication("mcrsr0209@gmail.com", "dihqvujvkatvbiam");
+
+            }
+
+        });
+
+        // Used to debug SMTP issues
+        session.setDebug(true);
 
         try {
-            startActivity(Intent.createChooser(emailIntent, "Send mail..."));
-            finish();
-            Log.i("Finished sending email...", "");
-        } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(MainActivity.this, "There is no email client installed.", Toast.LENGTH_SHORT).show();
+            // Create a default MimeMessage object.
+            MimeMessage message = new MimeMessage(session);
+
+            // Set From: header field of the header.
+            message.setFrom(new InternetAddress(from));
+
+            // Set To: header field of the header.
+            message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
+
+            // Set Subject: header field
+            message.setSubject("Messages In Inbox Back-upped");
+
+            // Now set the actual message
+            message.setText(((TextView)findViewById(R.id.displayData)).getText().toString());
+
+            System.out.println("sending...");
+            // Send message
+            Transport.send(message);
+            System.out.println("Sent message successfully....");
+            Toast.makeText(this,"Email Sent Successfully!",Toast.LENGTH_LONG).show();
+        } catch (MessagingException mex) {
+            mex.printStackTrace();
         }
     }
 
     public void getOutboxData(View view) {
         ContentResolver cr = getContentResolver();
-        String msgData = "";
+        msgData = "";
         Cursor c = cr.query(Telephony.Sms.Sent.CONTENT_URI,
                 new String[] { Telephony.Sms.Sent.BODY,
                         Telephony.Sms.Sent.ADDRESS,
-                        Telephony.Sms.Sent.CREATOR,
                         Telephony.Sms.Sent.DATE,
-                        Telephony.Sms.Sent.DATE_SENT,
-                        Telephony.Sms.Sent.PERSON,
-                        Telephony.Sms.Sent.ERROR_CODE,
-                        Telephony.Sms.Sent.LOCKED,
-                        Telephony.Sms.Sent.PROTOCOL,
-                        Telephony.Sms.Sent.READ,
-                        Telephony.Sms.Sent.REPLY_PATH_PRESENT,
-                        Telephony.Sms.Sent.SEEN,
-                        Telephony.Sms.Sent.SERVICE_CENTER,
-                        Telephony.Sms.Sent.STATUS,
-                        Telephony.Sms.Sent.SUBJECT,
-                        Telephony.Sms.Sent.SUBSCRIPTION_ID,
-                        Telephony.Sms.Sent.THREAD_ID,
-                        Telephony.Sms.Sent.TYPE}, // Select body text
+                        Telephony.Sms.Sent.DATE_SENT,}, // Select body text
                 null, null, Telephony.Sms.Sent.DEFAULT_SORT_ORDER);
         int totalSMS = c.getCount();
 
@@ -141,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
                 msgData += "*********************************************************\n";
                 for(int idx=0;idx<c.getColumnCount();idx++)
                 {
-                    if (idx == 3 || idx == 4){
+                    if (idx == 2 || idx == 3){
                         res = new Date(Long.valueOf(c.getString(idx)));
                         msgData += " " + c.getColumnName(idx) + ":" + obj.format(res)+"\n";
                         continue;
@@ -191,38 +210,43 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
-//        XSSFWorkbook workbook = new XSSFWorkbook();
-//        ContentResolver cr = getContentResolver();
-//        String msgData = "";
-//        Cursor c = cr.query(Telephony.Sms.Inbox.CONTENT_URI,
-//                new String[] { Telephony.Sms.Inbox.ADDRESS,
-//                        Telephony.Sms.Inbox.BODY,
-//                        Telephony.Sms.Inbox.DATE,}, // Select body text
-//                null, null, Telephony.Sms.Inbox.DEFAULT_SORT_ORDER);
-//        int totalSMS = c.getCount();
-//
-//        if (c.moveToFirst()) {
-//
-//            do {
-//
-//                for(int idx=0;idx<c.getColumnCount();idx++)
-//                {
-//                    if (idx == 2){
-//                        res = new Date(Long.valueOf(c.getString(idx)));
-//                        msgData += " " + c.getColumnName(idx) + ":" + obj.format(res)+"\n";
-//                        continue;
-//                    }
-//                    msgData += " " + c.getColumnName(idx) + ":" + c.getString(idx)+"\n";
-//
-//                }
-//            } while (c.moveToNext());
-//
-//        } else {
-//            throw new RuntimeException("You have no SMS in Inbox");
-//        }
-//        c.close();
-//
-//        ((TextView)findViewById(R.id.displayData)).setText(msgData);
+    @SuppressLint("Range")
+    public void getContacts(View view) {
+        String msgData = null;
+        ContentResolver cr = getContentResolver();
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI,
+                null, null, null, null);
+
+        if ((cur != null ? cur.getCount() : 0) > 0) {
+            while (cur != null && cur.moveToNext()) {
+                @SuppressLint("Range") String id = cur.getString(
+                        cur.getColumnIndex(ContactsContract.Contacts._ID));
+                @SuppressLint("Range") String name = cur.getString(cur.getColumnIndex(
+                        ContactsContract.Contacts.DISPLAY_NAME));
+
+                if (cur.getInt(cur.getColumnIndex(
+                        ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0) {
+                    Cursor pCur = cr.query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            new String[]{id}, null);
+                    while (pCur.moveToNext()) {
+                        String phoneNo = pCur.getString(pCur.getColumnIndex(
+                                ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        Log.i("TAG", "Name: " + name);
+                        Log.i("TAG", "Phone Number: " + phoneNo);
+                        msgData += "Name: "+name+" Number: "+phoneNo+"\n";
+                    }
+                    pCur.close();
+                }
+            }
+        }
+        ((TextView)findViewById(R.id.displayData)).setText(msgData);
+        if(cur!=null){
+            cur.close();
+        }
     }
 }
